@@ -31,16 +31,59 @@ void get_mac_from_line(char *line, char *mac) {
     strcpy(mac, "N/A");
 }
 
+
+// Функция для определения шлюза (очень базовый метод)
+int get_default_gateway(char *gateway_ip)
+{
+    FILE *fp;
+    char line[MAX_LINE_LENGTH];
+    char interface[IF_NAMESIZE];
+    unsigned long dest_addr, gw_addr;
+    int if_idx;
+
+    fp = fopen("/proc/net/route", "r");
+    if(fp == NULL) {
+        return -1;
+    }
+
+    // Пропускаем заголовок
+    fgets(line, MAX_LINE_LENGTH, fp);
+    while(fgets(line, MAX_LINE_LENGTH, fp)) {
+        if (sscanf(line, "%s %lx %lx %*x %*x %*x %*x %*x %*x %d", interface, &dest_addr, &gw_addr, &if_idx) == 4) {
+            if(dest_addr == 0) {
+               inet_ntop(AF_INET, &gw_addr, gateway_ip, INET_ADDRSTRLEN);
+               fclose(fp);
+               return 0;
+             }
+
+        }
+    }
+
+    fclose(fp);
+    strcpy(gateway_ip, "N/A");
+    return -1;
+}
+
+
 void scan_network() {
     FILE *fp;
     char line[MAX_LINE_LENGTH];
     char ip_addr[INET_ADDRSTRLEN];
     char mac_addr[18];
     char hostname[NI_MAXHOST];
+     char current_gateway[INET_ADDRSTRLEN];
     time_t now;
     time(&now);
     char time_str[26];
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+
+
+    if(get_default_gateway(current_gateway) == 0) {
+        printf("Default gateway: %s\n", current_gateway);
+    }
+    else {
+        printf("Could not find default gateway\n");
+    }
 
 
     fp = fopen(ARP_FILE, "r");
@@ -56,6 +99,7 @@ void scan_network() {
         return;
     }
     fprintf(log_fp, "==== %s ====\n", time_str);
+    fprintf(log_fp, "Default gateway: %s\n", current_gateway);
 
 
     fgets(line, MAX_LINE_LENGTH, fp); // skip header
