@@ -10,11 +10,12 @@
 #include <netdb.h>
 #include <time.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/wait.h>
-#include <fcntl.h>
 
 #define LOG_FILE "network_monitor.log"
+#define DOT_FILE "network_graph.dot"
 #define INTERVAL 60  // Интервал мониторинга в секундах
 #define MAX_HOPS 30  // Максимальное количество хопов для traceroute
 #define PACKET_SIZE 64
@@ -103,7 +104,7 @@ char* traceroute(const char* target) {
     return gateway;
 }
 
-// Функция для записи информации о сети в файл
+// Функция для записи информации о сети в файл и генерации .DOT
 void log_network_info() {
     FILE* log_file = fopen(LOG_FILE, "a");
     if (!log_file) {
@@ -138,6 +139,40 @@ void log_network_info() {
     }
 
     fclose(log_file);
+
+    // Генерация .DOT файла
+    FILE* dot_file = fopen(DOT_FILE, "w");
+    if (!dot_file) {
+        perror("Failed to open DOT file");
+        return;
+    }
+
+    fprintf(dot_file, "digraph G {\n");
+    fprintf(dot_file, "  node [shape=box];\n");
+
+    // Добавляем шлюз
+    if (gateway) {
+        fprintf(dot_file, "  \"%s\" [color=red];\n", gateway);
+    }
+
+    // Добавляем узлы
+    arp_output = popen("arp -a", "r");
+    if (arp_output) {
+        char buffer[256];
+        while (fgets(buffer, sizeof(buffer), arp_output) != NULL) {
+            char ip[16], mac[18], name[64];
+            if (sscanf(buffer, "%s %s %s", name, ip, mac) == 3) {
+                fprintf(dot_file, "  \"%s\" [label=\"%s\\n%s\"];\n", ip, ip, mac);
+            }
+        }
+        pclose(arp_output);
+    }
+
+    fprintf(dot_file, "}\n");
+    fclose(dot_file);
+
+    // Визуализация графа через wget
+    system("wget -O network_graph.png http://localhost:8080/network_graph.dot");
 }
 
 // Функция для демонизации
