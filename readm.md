@@ -26,6 +26,7 @@
 ### Зависимости
 - Утилита `dot` из пакета Graphviz
 - Утилита `xdg-open` из пакета xdg-utils
+
 Установка Graphviz:
 ```bash
 sudo apt install graphviz 
