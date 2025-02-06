@@ -34,7 +34,7 @@ sudo apt install graphviz
 Установка xdg-utils:
 ```bash
 sudo apt install xdg-utils
-```bash
+```
 ## Сборка проекта:
 Выполните команду:
 ```bash
